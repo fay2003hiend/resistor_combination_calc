@@ -1,0 +1,8 @@
+---
+BasedOnStyle: Google
+BreakBeforeBraces: Linux
+IndentCaseLabels: 'false'
+IndentWidth: '4'
+NamespaceIndentation: Inner
+ColumnLimit: 140
+...
