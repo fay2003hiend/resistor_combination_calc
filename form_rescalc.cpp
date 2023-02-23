@@ -1,5 +1,7 @@
 #include "form_rescalc.h"
 
+#include <algorithm>
+
 #include "ui_form_rescalc.h"
 
 FormResCalc::FormResCalc(QWidget* parent) : QWidget(parent), ui(new Ui::FormResCalc)
@@ -26,15 +28,12 @@ FormResCalc::FormResCalc(QWidget* parent) : QWidget(parent), ui(new Ui::FormResC
 
 FormResCalc::~FormResCalc() { delete ui; }
 
-void FormResCalc::slot_find_resistor()
+std::pair<bool, double> resistor_from_input(const QLineEdit* line_edit)
 {
-    double err = ui->lineEdit_max_err->text().toDouble() / 100.0;
-
-    ui->lineEdit_vout->clear();
-    ui->lineEdit_vref->clear();
-
     double expect;
-    QString resistance_str = ui->lineEdit_expect_r->text();
+    QString resistance_str = line_edit->text();
+    if (resistance_str.isEmpty()) return {false, 0.0};
+
     if (resistance_str.endsWith('M')) {
         resistance_str.chop(1);
         expect = resistance_str.toDouble();
@@ -50,6 +49,23 @@ void FormResCalc::slot_find_resistor()
     } else {
         expect = resistance_str.toDouble();
     }
+    return {true, expect};
+}
+
+void FormResCalc::slot_find_resistor()
+{
+    double err = ui->lineEdit_max_err->text().toDouble() / 100.0;
+
+    if (sender() == ui->pushButton_find_res) {
+        ui->lineEdit_r2->clear();
+        ui->lineEdit_vout->clear();
+        ui->lineEdit_vref->clear();
+    }
+
+    auto r = resistor_from_input(ui->lineEdit_expect_r);
+    if (!r.first) return;
+
+    double expect = r.second;
 
     std::vector<Combination> ret;
     ui->textBrowser->clear();
@@ -84,6 +100,14 @@ void FormResCalc::slot_find_divider()
     double vref = ui->lineEdit_vref->text().toDouble();
     double vout = ui->lineEdit_vout->text().toDouble();
     double err = ui->lineEdit_max_err->text().toDouble() / 100.0;
+
+    auto r2 = resistor_from_input(ui->lineEdit_r2);
+    if (r2.first) {
+        double r1 = (vout / vref) * r2.second - r2.second;
+        ui->lineEdit_expect_r->setText(QString::number(r1));
+        slot_find_resistor();
+        return;
+    }
 
     ui->lineEdit_expect_r->clear();
 
