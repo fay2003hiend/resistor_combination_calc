@@ -175,6 +175,14 @@ bool FormResCalc::find_dividers(double vout, double vref, std::vector<Combinatio
     return ret;
 }
 
+enum
+{
+    COMBI_ANY = 0,
+    COMBI_SINGLE,
+    COMBI_SERIES,
+    COMBI_PARALLEL
+};
+
 bool FormResCalc::find_combination(double expected_value, std::vector<Combination>& combinations, double err)
 {
     bool ret = false;
@@ -200,44 +208,54 @@ bool FormResCalc::find_combination(double expected_value, std::vector<Combinatio
         }
     }
 
-    if (ui->checkBox_single->isChecked()) {
+    int combi_mode = ui->cb_combi->currentIndex();
+    if (combi_mode == COMBI_SINGLE) {
         return ret;
     }
+
+    bool allow_series = combi_mode != COMBI_PARALLEL;
+    bool allow_parallel = combi_mode != COMBI_SERIES;
 
     // 2 resistors
     for (const Resistor& r1 : all_resistors) {
         for (const Resistor& r2 : all_resistors) {
-            double actual = r1.parallel_value_with(r2);
-            double actual_err = fabs(expected_value - actual) / expected_value;
-            if (actual_err < best_err) {
-                best_err = actual_err;
+            if (allow_parallel)
+            {
+                double actual = r1.parallel_value_with(r2);
+                double actual_err = fabs(expected_value - actual) / expected_value;
+                if (actual_err < best_err) {
+                    best_err = actual_err;
 
-                Combination c;
-                c.resistors.clear();
-                c.resistors.push_back(r1);
-                c.resistors.push_back(r2);
-                c.actual = actual;
-                c.error = actual_err;
-                c.type = Combination::TYPE_PARALLEL;
-                combinations.push_back(c);
+                    Combination c;
+                    c.resistors.clear();
+                    c.resistors.push_back(r1);
+                    c.resistors.push_back(r2);
+                    c.actual = actual;
+                    c.error = actual_err;
+                    c.type = Combination::TYPE_PARALLEL;
+                    combinations.push_back(c);
 
-                ret = true;
+                    ret = true;
+                }
             }
 
-            actual = r1.value() + r2.value();
-            actual_err = fabs(expected_value - actual) / expected_value;
-            if (actual_err < best_err) {
-                best_err = actual_err;
+            if (allow_series)
+            {
+                double actual = r1.value() + r2.value();
+                double actual_err = fabs(expected_value - actual) / expected_value;
+                if (actual_err < best_err) {
+                    best_err = actual_err;
 
-                Combination c;
-                c.resistors.clear();
-                c.resistors.push_back(r1);
-                c.resistors.push_back(r2);
-                c.actual = actual;
-                c.error = actual_err;
-                c.type = Combination::TYPE_SERIES;
-                combinations.push_back(c);
-                ret = true;
+                    Combination c;
+                    c.resistors.clear();
+                    c.resistors.push_back(r1);
+                    c.resistors.push_back(r2);
+                    c.actual = actual;
+                    c.error = actual_err;
+                    c.type = Combination::TYPE_SERIES;
+                    combinations.push_back(c);
+                    ret = true;
+                }
             }
         }
     }
